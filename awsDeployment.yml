@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Login into DockerHub
+      - docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
+  build:
+    commands:
+      - echo Build Started on 'date'
+      - echo Building the Docker image ...
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - echo create tag to push image in our dockerhub
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $DOCKERHUB_LOGIN/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker run --name $IMAGE_REPO_NAME -d -p 80:80 $DOCKERHUB_LOGIN/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - |
+        if $(curl http://localhost | grep -q "Dimension");
+        then
+          echo image seems to be working normally
+        else
+          echo image is not working as expected
+          echo we delete the image to ensure thatthe image will not be pushed
+          docker rmi $DOCKERHUB_LOGIN/$IMAGE_REPO_NAME:$IMAGE_TAG
+        fi
+      - docker rm -f $IMAGE_REPO_NAME
+  post_build:
+    commands:
+      - echo Build completed on 'date'
+      - docker push $DOCKERHUB_LOGIN/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - echo Build OK
